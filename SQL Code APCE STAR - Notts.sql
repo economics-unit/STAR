@@ -1,19 +1,18 @@
-/******* HOSPITAL ADMISSIONS: COST AND ACTIVITY - Notts**********/ 
+/******* HOSPITAL ADMISSIONS: COST AND ACTIVITY - xxx **********/ 
 /* the purpose of this analysis is to evidence the number of hospital admissions
 for AECOPD and the mean cost to feed into the STAR model as part of the Smarter 
-Spending in Population Health Programme */
-iated with people living in Coventry rather
+Spending in Population Health Programme rated with people living in xxx rather
 than in the hospital themselves. */
 USE NHSE_SUSPlus_Live
 
 
 /********* GP PRACTICE CODES *********************************************/
-/* GP practice codes for Coventry place where provided by an analyst working in Coventry City Council. */
+/* GP practice codes for xxx place where provided by an analyst working in xxx City Council. */
 /*these codes where then checked on ODS portal to make sure they were live over the relevant period (2020/21 to align to most rcent QOF prevelance)
 Numbers of total AECOPD hospital admissions per GP practice where then sense checked here */
 
 --running time: 02:08 min
-DROP TABLE IF EXISTS NHSE_Sandbox_HEU.temp.Notts_AECOPD 
+DROP TABLE IF EXISTS NHSE_Sandbox.temp.area_AECOPD 
 
 SELECT 
 	GP_Practice_Code
@@ -30,7 +29,7 @@ SELECT
 	END AS COPD_Code
 	--,NoofSpell  = count(APCS_Ident)
 
-	INTO NHSE_Sandbox_HEU.temp.Notts_AECOPD 
+	INTO NHSE_Sandbox.temp.area_AECOPD 
 
 FROM [dbo].[tbl_Data_SEM_APCS] 
 WHERE
@@ -43,12 +42,12 @@ WHERE
 		OR Der_Diagnosis_All LIKE '||J4%'
 		) 
 	  AND Der_Age_at_CDS_Activity_Date >=18
-	  AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	  AND Age_At_Start_of_Spell_SUS>=18  -- one record is excluded
 
 SELECT GP_Practice_Code
 	,COUNT(*)
-FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD 
+FROM NHSE_Sandbox.temp.area_AECOPD 
 GROUP BY GP_Practice_Code
 
 /* There was no disparities between fingertips prevelance and AECOPDs that raised concerns about the use of the GP practice code */
@@ -95,7 +94,7 @@ FROM [dbo].[tbl_Data_SEM_APCS]
 WHERE
       APCS_Ident IS NOT NULL AND
 	  Der_Financial_Year = '2021/22' AND  
-	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	  AND Der_Age_at_CDS_Activity_Date >=18
 GROUP BY CASE WHEN Der_Diagnosis_all LIKE '%J440%' then 'J440'
 	WHEN Der_Diagnosis_all LIKE '%J441%' then 'J441'
@@ -105,7 +104,7 @@ GROUP BY CASE WHEN Der_Diagnosis_all LIKE '%J440%' then 'J440'
 	ELSE 'different code'
 	END
 
-	/* this method gives extraordinarily high numbers. Number is same as total COPD prevelence in Coventry. Have checked with other analysts. 
+	/* this method gives extraordinarily high numbers. Number is same as total COPD prevelence in xxx. Have checked with other analysts. 
 	Pragmatic solution is to remove J22 from the analysis */
 	/************************ HRG code check ***************************************************/
 
@@ -119,7 +118,7 @@ WHERE
 	  AND [Spell_Core_HRG_SUS] NOT LIKE '%DZ65%' AND
 	  Der_Diagnosis_All LIKE '||J44%'
 	  AND Der_Age_at_CDS_Activity_Date >=18
-	  AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	  AND Age_At_Start_of_Spell_SUS>=18  -- one record is excluded
 	  group by [Spell_Core_HRG_SUS]
 
@@ -132,13 +131,13 @@ WHERE
 /* fingertips uses a primary diagnosis is COPD J440 to J441 have done below for comparison with Rothnie et al.  */
 
 SELECT count( DISTINCT APCS_Ident)
-FROM NHSE_Sandbox_HEU.temp.Coventry_AECOPD
+FROM NHSE_Sandbox.temp.area_AECOPD
 WHERE COPD_Code LIKE 'primaryJ44%'
 
 
 /************************* COSTS OF AECOPD  *****************************************************/
 
-/*using the above coding in rothnie et al, we first looked at the distribution of costs for an AECOPD in Notts */
+/*using the above coding in rothnie et al, we first looked at the distribution of costs for an AECOPD in xxx */
 /* This revealed a right skewed distribution, as is common with cost data with a large tail. As we plan to use the mean, the top 1%  of results were removed so that they do not affect the mean cost */
 
 /* with the coding J44 any position */
@@ -147,12 +146,12 @@ SELECT
 	count(DISTINCT apcs.APCS_Ident),
 	sum(cost.Tariff_Total_Payment) AS cost_spell,
 	ICP_Name
-FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD AS apcs
+FROM NHSE_Sandbox.temp.area_AECOPD AS apcs
 	INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] AS cost 
 		ON cost.APCS_Ident = apcs.APCS_Ident
 		AND cost.Der_Financial_Year = '2021/22'
 		AND cost.Tariff_Total_Payment IS NOT NULL
-		LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP as GP
+		LEFT JOIN NHSE_Sandbox.temp.GP_List as GP
 		ON apcs.GP_Practice_Code = GP.GP_code
 WHERE apcs.COPD_Code LIKE '%J44[019]%' 
 GROUP BY ICP_Name
@@ -167,7 +166,7 @@ DECLARE @cost_ref_roth FLOAT =
 			SELECT 
 				top(1) PERCENT WITH TIES -- choose the top 1% tariff total payment as the reference
 				cost.Tariff_Total_Payment
-			FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD apcs
+			FROM NHSE_Sandbox.temp.area_AECOPD apcs
 				INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 					ON cost.APCS_Ident = apcs.APCS_Ident
 					AND cost.Der_Financial_Year = '2021/22'
@@ -183,14 +182,14 @@ SELECT DISTINCT
 	COUNT( DISTINCT apcs.APCS_Ident) AS spells_COPD_any,
 	SUM(cost.Tariff_Total_Payment) AS cost_spell,
 	ICP_Name
-FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD as apcs
+FROM NHSE_Sandbox.temp.area_AECOPD as apcs
 	INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 		ON cost.APCS_Ident = apcs.APCS_Ident
-	LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP as GP
+	LEFT JOIN NHSE_Sandbox.temp.GP_List as GP
 		ON apcs.GP_Practice_Code = GP.GP_code
 WHERE
       apcs.APCS_Ident IS NOT NULL AND
-	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	AND apcs.COPD_Code LIKE '%J44[019]%'
 	AND cost.Tariff_Total_Payment IS NOT NULL
 	AND cost.Tariff_Total_Payment <= @cost_ref_roth
@@ -209,7 +208,7 @@ DECLARE @cost_ref_fing FLOAT =
 			SELECT 
 				top(1) PERCENT WITH TIES -- choose the top 1% tariff total payment as the reference
 				cost.Tariff_Total_Payment
-			FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD apcs
+			FROM NHSE_Sandbox.temp.area_AECOPD apcs
 				INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 					ON cost.APCS_Ident = apcs.APCS_Ident
 					AND cost.Der_Financial_Year = '2021/22'
@@ -224,14 +223,14 @@ SELECT DISTINCT
 	COUNT( DISTINCT apcs.APCS_Ident) AS spells_COPD_any,
 	SUM(cost.Tariff_Total_Payment) AS cost_spell,
 	ICP_Name
-FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD as apcs
+FROM NHSE_Sandbox.temp.area_AECOPD as apcs
 	INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 		ON cost.APCS_Ident = apcs.APCS_Ident
-	LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP as GP
+	LEFT JOIN NHSE_Sandbox.temp.GP_List as GP
 		ON apcs.GP_Practice_Code = GP.GP_code
 WHERE
       apcs.APCS_Ident IS NOT NULL AND
-	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	AND COPD_Code LIKE 'primaryJ4%'
 			AND cost.Tariff_Total_Payment IS NOT NULL
 		AND cost.Tariff_Total_Payment <= @cost_ref_fing
@@ -247,10 +246,10 @@ DECLARE @cost_ref_AECOPD FLOAT =
 			SELECT 
 				top(1) PERCENT WITH TIES -- choose the top 1% tariff total payment as the reference
 				cost.Tariff_Total_Payment
-			FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD apcs
+			FROM NHSE_Sandbox.temp.area_AECOPD apcs
 				INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 					ON cost.APCS_Ident = apcs.APCS_Ident
-				LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP as GP
+				LEFT JOIN NHSE_Sandbox.temp.GP_List as GP
 					ON apcs.GP_Practice_Code = GP_code
 					AND cost.Der_Financial_Year = '2021/22'
 					AND cost.Tariff_Total_Payment IS NOT NULL
@@ -264,18 +263,21 @@ SELECT DISTINCT
 	COUNT( DISTINCT apcs.APCS_Ident) AS spells_COPD_any,
 	SUM(cost.Tariff_Total_Payment) AS cost_spell,
 	ICP_Name
-FROM NHSE_Sandbox_HEU.temp.Notts_AECOPD as apcs
+FROM NHSE_Sandbox.temp.area_AECOPD as apcs
 	INNER JOIN [dbo].[tbl_Data_SEM_APCS_2122_Cost] as cost 
 		ON cost.APCS_Ident = apcs.APCS_Ident
-	LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP
+	LEFT JOIN NHSE_Sandbox.temp.GP_List
 	ON apcs.GP_Practice_Code = GP_code
 WHERE
       apcs.APCS_Ident IS NOT NULL AND
-	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+	  GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
 	AND COPD_Code LIKE '%primaryJ44%'
 			AND cost.Tariff_Total_Payment IS NOT NULL
 		AND cost.Tariff_Total_Payment <= @cost_ref_AECOPD
 group by ICP_Name
+
+
+
 
 
 
