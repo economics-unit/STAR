@@ -1,10 +1,10 @@
-/*OPA code for Notts.  */
+/*OPA code for xxx.  */
 -- has been QA'ed
 -- uses strategy_unit analysis to identify initial opinion or structured review OPAs https://www.midlandsdecisionsupport.nhs.uk/wp-content/uploads/2021/10/dsu_classify_op_appendix_v0.1.pdf
 
 
-DROP TABLE IF EXISTS NHSE_Sandbox_HEU.temp.Notts_OPAFIRST
-    CREATE TABLE NHSE_Sandbox_HEU.temp.Notts_OPAFIRST
+DROP TABLE IF EXISTS NHSE_Sandbox.temp.Area_OPAFIRST
+    CREATE TABLE NHSE_Sandbox.temp.Area_OPAFIRST
         (
         [OPA_Ident] BIGINT,
         [Der_Pseudo_NHS_Number] BIGINT,
@@ -14,7 +14,7 @@ DROP TABLE IF EXISTS NHSE_Sandbox_HEU.temp.Notts_OPAFIRST
 
 
 
-   INSERT INTO NHSE_Sandbox_HEU.temp.Notts_OPAFIRST
+   INSERT INTO NHSE_Sandbox.temp.Area_OPAFIRST
     SELECT OPA_Ident
     ,[Der_Pseudo_NHS_Number]e
     ,[Appointment_Date]
@@ -40,7 +40,7 @@ SELECT ROW_NUMBER() OVER(PARTITION BY [Der_Pseudo_NHS_Number] ORDER BY [Appointm
     OR Der_Procedure_All LIKE '%B32%'
     OR Der_Procedure_All LIKE '%X551%'
     OR Der_Procedure_All LIKE '%Q411%')
-    AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP)
+    AND GP_Practice_Code IN (SELECT GP_code FROM NHSE_Sandbox.temp.GP_List)
     AND Age_at_End_of_Episode_SUS >= 18
     AND Der_Pseudo_NHS_Number is not null
         ) as tb
@@ -51,12 +51,12 @@ where tb.OP_ORDER = 1
 select 
 count(OPA.OPA_ident),
 sum(Tariff_Total_Payment) as total_cost
-from NHSE_Sandbox_HEU.temp.Notts_OPAFIRST as OPA 
+from NHSE_Sandbox.temp.Area_OPAFIRST as OPA 
 LEFT JOIN  [dbo].[tbl_Data_SEM_OPA_2122_Cost] as cost 
 ON cost.OPA_Ident = OPA.OPA_Ident
 LEFT JOIN [dbo].[tbl_Data_SEM_APCE] as APCE
 ON Local_Patient_ID = APCE.LOCAL_Patient_ID
-LEFT JOIN NHSE_Sandbox_HEU.temp.HEU_097_Notts_GP AS GP
+LEFT JOIN NHSE_Sandbox.temp.GP_List AS GP
 ON GP.GP_code = GP_Practice_Code
 WHERE APCE.Der_Diagnosis_All LIKE '%J44%' 
 GROUP BY Der_Attendance_Type, gp.ICP_Name
